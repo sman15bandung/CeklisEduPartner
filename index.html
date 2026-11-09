@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#5EEAD4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Ceklis Edu Partner">
+    <title>Ceklis Edu Partner - Eccopreneur Techfest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8FAFC; /* Soft slate background */
+            color: #334155; /* Clear dark text but not pitch black */
+            -webkit-tap-highlight-color: transparent;
+        }
+        input, select { font-size: 16px !important; }
+        /* Custom Checkbox Styling for softer look */
+        .soft-checkbox {
+            appearance: none;
+            background-color: #fff;
+            margin: 0;
+            font: inherit;
+            color: currentColor;
+            width: 1.5em;
+            height: 1.5em;
+            border: 2px solid #cbd5e1;
+            border-radius: 0.35em;
+            display: grid;
+            place-content: center;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .soft-checkbox::before {
+            content: "";
+            width: 0.85em;
+            height: 0.85em;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em white;
+            background-color: white;
+            transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        .soft-checkbox:checked {
+            background-color: #5EEAD4; /* Soft teal */
+            border-color: #5EEAD4;
+        }
+        .soft-checkbox:checked::before {
+            transform: scale(1);
+        }
+        .facility-item {
+            transition: all 0.2s ease;
+        }
+        .facility-item.checked {
+            background-color: #F0FDF4; /* Very soft green */
+            opacity: 0.8;
+        }
+        .facility-item.checked span {
+            text-decoration: line-through;
+            color: #94A3B8;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-10">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10 rounded-b-2xl">
+        <div class="max-w-md mx-auto px-6 py-5 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold text-slate-700 leading-tight">Eccopreneur Techfest</h1>
+                <p class="text-sm text-slate-500 font-medium mt-1">Ceklis Fasilitas Edu Partner</p>
+            </div>
+            <button id="toggleViewBtn" class="bg-teal-50 text-teal-600 border border-teal-200 px-3 py-2 rounded-xl text-sm font-semibold active:scale-95 transition-transform shadow-sm">
+                + Tambah
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-md mx-auto px-4 mt-6">
+        
+        <!-- === VIEW: CEKLIS === -->
+        <div id="checklistView">
+            <!-- Selection Card -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mb-6">
+                <label class="block text-sm font-semibold text-slate-600 mb-2">Pilih Edu Partner</label>
+                <select id="partnerSelect" class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200 font-medium"></select>
+                <p id="syncStatus" class="text-xs text-slate-400 mt-2 cursor-pointer">Menghubungkan...</p>
+            </div>
+
+
+        <!-- Checklist Container (Hidden initially) -->
+        <div id="checklistContainer" class="hidden animate-[fadeIn_0.3s_ease-out]">
+            
+            <div class="flex items-center justify-between mb-4 px-1">
+                <div>
+                    <h2 id="partnerNameDisplay" class="text-xl font-bold text-slate-800">Nama Partner</h2>
+                    <span id="partnerTierDisplay" class="inline-block mt-1 px-3 py-1 bg-teal-50 text-teal-600 text-xs font-bold rounded-full border border-teal-100">Tier</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-400 block mb-1">Progress</span>
+                    <span id="progressText" class="text-sm font-bold text-slate-700">0/0</span>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-200 rounded-full h-2 mb-6">
+                <div id="progressBar" class="bg-teal-400 h-2 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+
+            <!-- Facilities List -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <ul id="facilitiesList" class="divide-y divide-slate-100">
+                    <!-- Checkboxes will be populated by JS -->
+                </ul>
+            </div>
+            
+            <button id="resetBtn" class="mt-6 w-full py-3 px-4 bg-white border border-rose-200 text-rose-500 font-semibold rounded-xl text-sm shadow-sm hover:bg-rose-50 transition-colors active:scale-[0.98]">
+                Reset Ceklis Partner Ini
+            </button>
+        </div>
+        </div> <!-- End of checklistView -->
+
+        <!-- === VIEW: TAMBAH PARTNER === -->
+        <div id="addView" class="hidden animate-[fadeIn_0.3s_ease-out]">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mb-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">Tambah Edu Partner Baru</h2>
+                
+                <div class="space-y-4">
+                    <!-- Pilihan Paket Preset -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Pilihan Paket & Harga</label>
+                        <div class="relative">
+                            <select id="packageSelect" class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200 appearance-none font-medium">
+                                <option value="manual">-- Input Manual / Custom --</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Pilih paket untuk mengisi fasilitas secara otomatis.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Nama Edu Partner</label>
+                        <input type="text" id="newPartnerName" placeholder="Contoh: Tech Startup.id" class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Paket / Tier</label>
+                        <input type="text" id="newPartnerTier" placeholder="Contoh: Sponsor Silver" class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-2">Fasilitas yang Didapat</label>
+                        <div id="dynamicFacilityList" class="space-y-2 mb-3">
+                            <!-- Input Fasilitas Awal -->
+                            <div class="flex gap-2 facility-input-row">
+                                <input type="text" placeholder="Contoh: Meja & 2 Kursi" class="facility-input w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200 text-sm">
+                            </div>
+                        </div>
+                        <button id="addFacilityBtn" class="text-sm font-semibold text-teal-600 bg-teal-50 px-3 py-2 rounded-lg hover:bg-teal-100 border border-teal-100 transition-colors w-full text-center">
+                            + Tambah Baris Fasilitas
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button id="savePartnerBtn" class="w-full py-3 px-4 bg-teal-500 text-white font-semibold rounded-xl text-base shadow-sm hover:bg-teal-600 transition-colors active:scale-[0.98] mb-3">
+                Simpan Edu Partner
+            </button>
+            <button id="cancelAddBtn" class="w-full py-3 px-4 bg-white border border-slate-200 text-slate-500 font-semibold rounded-xl text-sm shadow-sm hover:bg-slate-50 transition-colors active:scale-[0.98]">
+                Batal Kembali
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        // Data default untuk percobaan pertama
+        const defaultPartners = [
+            {
+                id: "EP001",
+                name: "TechAcademy (Contoh)",
+                tier: "Platinum (Sponsor Utama)",
+                facilities: [
+                    "Booth Ukuran 4x4 Meter",
+                    "Listrik Kapasitas Tinggi (1500W)",
+                    "Meja & 4 Kursi Premium",
+                    "6 ID Card & Lanyard Spesial",
+                    "Makan Siang VIP (6 Pax)"
+                ]
+            }
+        ];
+
+        // Load data partners dari local storage, jika tidak ada pakai default
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxH6qAfkBnOJbNyg76PlmfUQm4D9xtljG8otMN4BQyR8GUGsXxJK8_JkmKVHFpqlMxbGA/exec'; // URL web app (/exec)
+        let eduPartners = JSON.parse(localStorage.getItem('eccopreneur_partners_data') || 'null') || [];
+
+        // State Management
+        let currentPartnerId = null;
+        // Load saved data from localStorage, or initialize empty object
+        let savedChecklists = JSON.parse(localStorage.getItem('eccopreneur_checklists')) || {};
+
+        // DOM Elements - View Ceklis
+        const checklistView = document.getElementById('checklistView');
+        const selectEl = document.getElementById('partnerSelect');
+        const containerEl = document.getElementById('checklistContainer');
+        const nameDisplayEl = document.getElementById('partnerNameDisplay');
+        const tierDisplayEl = document.getElementById('partnerTierDisplay');
+        const listEl = document.getElementById('facilitiesList');
+        const progressTextEl = document.getElementById('progressText');
+        const progressBarEl = document.getElementById('progressBar');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // DOM Elements - View Tambah Partner
+        const toggleViewBtn = document.getElementById('toggleViewBtn');
+        const addView = document.getElementById('addView');
+        const packageSelect = document.getElementById('packageSelect'); // Baru
+        const newPartnerName = document.getElementById('newPartnerName');
+        const newPartnerTier = document.getElementById('newPartnerTier');
+        const dynamicFacilityList = document.getElementById('dynamicFacilityList');
+        const addFacilityBtn = document.getElementById('addFacilityBtn');
+        const savePartnerBtn = document.getElementById('savePartnerBtn');
+        const cancelAddBtn = document.getElementById('cancelAddBtn');
+
+        // 1. Populate Dropdown
+        function initApp() {
+            selectEl.innerHTML = '<option value="" disabled selected>-- Pilih Partner --</option>';
+            eduPartners.forEach(partner => {
+                const option = document.createElement('option');
+                option.value = partner.id;
+                option.textContent = partner.name;
+                selectEl.appendChild(option);
+            });
+        }
+
+        // 2. Handle Dropdown Change
+        selectEl.addEventListener('change', (e) => {
+            currentPartnerId = e.target.value;
+            if (currentPartnerId) {
+                renderChecklist();
+                containerEl.classList.remove('hidden');
+            }
+        });
+
+        // 3. Render Checklist for selected partner
+        function renderChecklist() {
+            const partner = eduPartners.find(p => p.id === currentPartnerId);
+            if (!partner) return;
+
+            // Initialize partner state in savedChecklists if not exists
+            if (!savedChecklists[currentPartnerId]) {
+                savedChecklists[currentPartnerId] = [];
+            }
+
+            nameDisplayEl.textContent = partner.name;
+            tierDisplayEl.textContent = `Paket: ${partner.tier}`;
+            
+            listEl.innerHTML = ''; // Clear previous list
+
+            partner.facilities.forEach((facility, index) => {
+                const isChecked = savedChecklists[currentPartnerId].includes(index);
+                
+                const li = document.createElement('li');
+                li.className = `facility-item p-4 flex items-center gap-4 cursor-pointer active:bg-slate-50 ${isChecked ? 'checked' : ''}`;
+                
+                // Clicking anywhere on the list item toggles the checkbox
+                li.addEventListener('click', (e) => {
+                    // Prevent double firing if they click the actual input element
+                    if(e.target.tagName.toLowerCase() !== 'input') {
+                        checkbox.click();
+                    }
+                });
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'soft-checkbox shrink-0 cursor-pointer';
+                checkbox.checked = isChecked;
+                
+                checkbox.addEventListener('change', (e) => {
+                    handleCheckboxToggle(index, e.target.checked);
+                    // Update UI styling
+                    if(e.target.checked) {
+                        li.classList.add('checked');
+                    } else {
+                        li.classList.remove('checked');
+                    }
+                });
+
+                const span = document.createElement('span');
+                span.className = 'text-base font-medium text-slate-700 pointer-events-none';
+                span.textContent = facility;
+
+                li.appendChild(checkbox);
+                li.appendChild(span);
+                listEl.appendChild(li);
+            });
+
+            updateProgress(partner);
+        }
+
+        // 4. Handle Checkbox Action
+        function handleCheckboxToggle(facilityIndex, isChecked) {
+            let checkedItems = savedChecklists[currentPartnerId];
+            
+            if (isChecked) {
+                if (!checkedItems.includes(facilityIndex)) {
+                    checkedItems.push(facilityIndex);
+                }
+            } else {
+                checkedItems = checkedItems.filter(i => i !== facilityIndex);
+            }
+            
+            savedChecklists[currentPartnerId] = checkedItems;
+            saveData();
+            push({action:'check', id:currentPartnerId, index:facilityIndex, checked:isChecked});
+            
+            const partner = eduPartners.find(p => p.id === currentPartnerId);
+            updateProgress(partner);
+        }
+
+        // 5. Update Progress Bar
+        function updateProgress(partner) {
+            const total = partner.facilities.length;
+            const checkedCount = savedChecklists[currentPartnerId].length;
+            const percentage = Math.round((checkedCount / total) * 100);
+            
+            progressTextEl.textContent = `${checkedCount}/${total}`;
+            progressBarEl.style.width = `${percentage}%`;
+            
+            // Change color to green when complete
+            if(percentage === 100) {
+                progressBarEl.classList.replace('bg-teal-400', 'bg-emerald-400');
+                progressTextEl.classList.add('text-emerald-500');
+            } else {
+                progressBarEl.classList.replace('bg-emerald-400', 'bg-teal-400');
+                progressTextEl.classList.remove('text-emerald-500');
+            }
+        }
+
+        // 6. Save to Local Storage
+        function saveData() {
+            localStorage.setItem('eccopreneur_checklists', JSON.stringify(savedChecklists));
+        }
+
+        // 7. Reset Button Logic
+        resetBtn.addEventListener('click', () => {
+            if(currentPartnerId) {
+                // Reset semua ceklis untuk partner terpilih
+                savedChecklists[currentPartnerId] = [];
+                saveData();
+                renderChecklist();
+                push({action:'reset', id:currentPartnerId});
+            }
+        });
+
+        // --- FITUR TAMBAH PARTNER BARU ---
+
+        // Data Preset Paket (Harga dan Fasilitas)
+        const packagePresets = [
+            {
+                id: "edu_partner_dasar",
+                name: "Education Partner (Benefit Dasar) - Rp 2.500.000",
+                tier: "Education Partner",
+                facilities: [
+                    "Booth ukuran 2 x 2 m",
+                    "1 meja & 2 kursi",
+                    "Area khusus Education Partner",
+                    "Logo pada media publikasi Education Partner",
+                    "Publikasi di media sosial resmi acara",
+                    "Penyebutan oleh MC",
+                    "Kesempatan membagikan brosur/materi promosi di area booth",
+                    "Sertifikat Education Partner",
+                    "2 orang perwakilan",
+                    "Akses mengikuti seluruh rangkaian EcoPreneur TechFest 2026"
+                ]
+            },
+            {
+                id: "edu_partner_khusus",
+                name: "Education Partner (Harga Khusus) - Rp 2.200.000",
+                tier: "Education Partner",
+                facilities: [
+                    "Booth ukuran 2 x 2 m",
+                    "1 meja & 2 kursi",
+                    "Area khusus Education Partner",
+                    "Logo pada media publikasi Education Partner",
+                    "Publikasi di media sosial resmi acara",
+                    "Penyebutan oleh MC",
+                    "Kesempatan membagikan brosur/materi promosi di area booth",
+                    "Sertifikat Education Partner",
+                    "2 orang perwakilan",
+                    "Akses mengikuti seluruh rangkaian EcoPreneur TechFest 2026"
+                ]
+            },
+            {
+                id: "addon_1",
+                name: "Add-on 1: Main Stage + Sosmed - Rp 750.000",
+                tier: "Add-on 1",
+                facilities: [
+                    "Promosi di panggung 10-15 menit",
+                    "1 Feed + 1 Reel + 3 Stories",
+                    "Logo ditampilkan di LED saat sesi promosi",
+                    "1x penyebutan oleh MC",
+                    "Dokumentasi kegiatan promosi"
+                ]
+            },
+            {
+                id: "addon_2",
+                name: "Add-on 2: Social Media Promotion - Rp 350.000",
+                tier: "Add-on 2",
+                facilities: [
+                    "1 Feed + 1 Reel + 3 Stories",
+                    "Eksposur di media sosial resmi acara"
+                ]
+            },
+            {
+                id: "addon_3",
+                name: "Add-on 3: LED Screen Promotion - Rp 200.000",
+                tier: "Add-on 3",
+                facilities: [
+                    "Materi promosi ditampilkan pada LED screen utama"
+                ]
+            },
+            {
+                id: "addon_4",
+                name: "Add-on 4: Booth Activation - Rp 350.000",
+                tier: "Add-on 4",
+                facilities: [
+                    "Kesempatan menyelenggarakan aktivitas interaktif di area booth"
+                ]
+            },
+            {
+                id: "addon_5",
+                name: "Add-on 5: Additional MC Mention - Rp 150.000",
+                tier: "Add-on 5",
+                facilities: [
+                    "3 kali penyebutan nama institusi oleh MC"
+                ]
+            }
+        ];
+
+        // Inisialisasi Dropdown Paket
+        function initPackageDropdown() {
+            packagePresets.forEach(preset => {
+                const option = document.createElement('option');
+                option.value = preset.id;
+                option.textContent = preset.name;
+                packageSelect.appendChild(option);
+            });
+        }
+
+        // Handle otomatisasi saat pilihan paket diubah
+        packageSelect.addEventListener('change', (e) => {
+            const selectedId = e.target.value;
+            
+            // Jika pilih manual, kosongkan fasilitas
+            if (selectedId === 'manual') {
+                newPartnerTier.value = '';
+                dynamicFacilityList.innerHTML = `
+                    <div class="flex gap-2 facility-input-row">
+                        <input type="text" placeholder="Contoh: Meja & 2 Kursi" class="facility-input w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200 text-sm">
+                    </div>
+                `;
+                return;
+            }
+
+            // Jika pilih salah satu paket, isi datanya otomatis
+            const preset = packagePresets.find(p => p.id === selectedId);
+            if (preset) {
+                newPartnerTier.value = preset.tier;
+                dynamicFacilityList.innerHTML = ''; // Kosongkan form yang ada
+                
+                preset.facilities.forEach(fac => {
+                    const row = document.createElement('div');
+                    row.className = 'flex gap-2 facility-input-row mb-2';
+                    row.innerHTML = `
+                        <input type="text" value="${fac}" class="facility-input w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200 text-sm">
+                        <button class="remove-facility-btn bg-rose-50 text-rose-500 px-4 rounded-xl border border-rose-100 font-bold shrink-0 hover:bg-rose-100">X</button>
+                    `;
+                    
+                    // Fungsi hapus baris
+                    row.querySelector('.remove-facility-btn').addEventListener('click', function() {
+                        row.remove();
+                    });
+                    
+                    dynamicFacilityList.appendChild(row);
+                });
+            }
+        });
+
+        // Toggle antar halaman Ceklis & Tambah Data
+        function toggleViews() {
+            if (addView.classList.contains('hidden')) {
+                addView.classList.remove('hidden');
+                checklistView.classList.add('hidden');
+                toggleViewBtn.textContent = 'Lihat Ceklis';
+                toggleViewBtn.classList.replace('bg-teal-50', 'bg-slate-100');
+                toggleViewBtn.classList.replace('text-teal-600', 'text-slate-600');
+                toggleViewBtn.classList.replace('border-teal-200', 'border-slate-200');
+            } else {
+                addView.classList.add('hidden');
+                checklistView.classList.remove('hidden');
+                toggleViewBtn.textContent = '+ Tambah';
+                toggleViewBtn.classList.replace('bg-slate-100', 'bg-teal-50');
+                toggleViewBtn.classList.replace('text-slate-600', 'text-teal-600');
+                toggleViewBtn.classList.replace('border-slate-200', 'border-teal-200');
+            }
+        }
+
+        toggleViewBtn.addEventListener('click', toggleViews);
+        cancelAddBtn.addEventListener('click', toggleViews);
+
+        // Tambah baris input fasilitas
+        addFacilityBtn.addEventListener('click', () => {
+            const row = document.createElement('div');
+            row.className = 'flex gap-2 facility-input-row mt-2';
+            row.innerHTML = `
+                <input type="text" placeholder="Fasilitas tambahan..." class="facility-input w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200 text-sm">
+                <button class="remove-facility-btn bg-rose-50 text-rose-500 px-4 rounded-xl border border-rose-100 font-bold shrink-0 hover:bg-rose-100">X</button>
+            `;
+            
+            // Logika untuk menghapus baris tersebut jika batal
+            row.querySelector('.remove-facility-btn').addEventListener('click', function() {
+                row.remove();
+            });
+
+            dynamicFacilityList.appendChild(row);
+        });
+
+        // Simpan Data ke dalam aplikasi (dan Local Storage)
+        savePartnerBtn.addEventListener('click', () => {
+            const name = newPartnerName.value.trim();
+            const tier = newPartnerTier.value.trim();
+            
+            // Ambil semua isi fasilitas yang tidak kosong
+            const facilityInputs = document.querySelectorAll('.facility-input');
+            const facilities = Array.from(facilityInputs)
+                                   .map(input => input.value.trim())
+                                   .filter(val => val !== "");
+
+            // Validasi sederhana
+            if (!name || !tier || facilities.length === 0) {
+                const originalText = savePartnerBtn.textContent;
+                savePartnerBtn.textContent = "Mohon Lengkapi Data!";
+                savePartnerBtn.classList.replace('bg-teal-500', 'bg-rose-500');
+                setTimeout(() => {
+                    savePartnerBtn.textContent = originalText;
+                    savePartnerBtn.classList.replace('bg-rose-500', 'bg-teal-500');
+                }, 2000);
+                return;
+            }
+
+            // Buat ID baru
+            const newId = "EP_" + Date.now();
+            
+            const newPartner = {
+                id: newId,
+                name: name,
+                tier: tier,
+                facilities: facilities
+            };
+
+            // Masukkan data baru dan simpan di memori browser
+            eduPartners.push(newPartner);
+            localStorage.setItem('eccopreneur_partners_data', JSON.stringify(eduPartners));
+            push({action:'add', partner:newPartner});
+
+            // Kosongkan formulir untuk penggunaan selanjutnya
+            newPartnerName.value = '';
+            newPartnerTier.value = '';
+            packageSelect.value = 'manual'; // Kembalikan ke manual
+            dynamicFacilityList.innerHTML = `
+                <div class="flex gap-2 facility-input-row">
+                    <input type="text" placeholder="Contoh: Meja & 2 Kursi" class="facility-input w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200 text-sm">
+                </div>
+            `;
+
+            // Refresh menu dropdown
+            initApp();
+            
+            // Buka halaman ceklis dan langsung tampilkan partner yang baru dibuat
+            selectEl.value = newId;
+            const event = new Event('change');
+            selectEl.dispatchEvent(event);
+
+            toggleViews();
+        });
+
+        // --- SINKRONISASI GOOGLE SHEETS ---
+        const statusEl = document.getElementById('syncStatus');
+        function setStatus(t, err) {
+            statusEl.textContent = t;
+            statusEl.className = 'text-xs mt-2 cursor-pointer ' + (err ? 'text-rose-500' : 'text-slate-400');
+        }
+        async function push(payload) {
+            setStatus('Menyimpan...');
+            try {
+                const r = await fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload)});
+                const j = await r.json();
+                if (!j.ok) throw new Error(j.error);
+                setStatus('Tersimpan di spreadsheet \u2713');
+            } catch (e) {
+                setStatus('Gagal menyimpan ke spreadsheet. Ketuk untuk muat ulang.', true);
+            }
+        }
+        async function loadFromSheet() {
+            setStatus('Memuat dari spreadsheet...');
+            try {
+                const r = await fetch(API_URL + '?action=list');
+                const j = await r.json();
+                if (!j.ok) throw new Error(j.error);
+                eduPartners = j.partners; savedChecklists = j.checks;
+                localStorage.setItem('eccopreneur_partners_data', JSON.stringify(eduPartners));
+                saveData();
+                const keep = currentPartnerId;
+                initApp();
+                if (keep && eduPartners.some(p => p.id === keep)) { selectEl.value = keep; renderChecklist(); }
+                setStatus('Tersinkron \u2713 ' + new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}));
+            } catch (e) {
+                setStatus('Offline - menampilkan data tersimpan. Ketuk untuk coba lagi.', true);
+            }
+        }
+        statusEl.addEventListener('click', loadFromSheet);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) loadFromSheet(); });
+
+        // Initialize Application
+        initPackageDropdown();
+        initApp();
+        loadFromSheet();
+    </script>
+</body>
+</html>
