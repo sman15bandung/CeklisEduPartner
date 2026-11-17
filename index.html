@@ -66,7 +66,6 @@
         /* === CETAK / PDF === */
         #printArea { display: none; }
         @media print {
-            @page { size: A4 portrait; margin: 15mm; }
             body { background: #fff !important; color: #000; padding: 0 !important; min-height: 0 !important; }
             header, main { display: none !important; }
             #printArea { display: block; font-size: 11pt; }
@@ -92,7 +91,28 @@
             .print-sign td { width: 50%; text-align: center; vertical-align: top; }
             .print-sign .space { height: 22mm; }
         }
+        @media print {
+            .rekap-title { text-align: center; font-size: 13pt; font-weight: 700; margin: 0; }
+            .rekap-sub { display: flex; justify-content: space-between; font-size: 9pt; margin: 2px 0 6px; }
+            .rekap-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8pt; }
+            .rekap-table th, .rekap-table td { border: 1px solid #000; padding: 1px 3px; vertical-align: middle; overflow: hidden; }
+            .rekap-table th { background: #e5e7eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: 700; }
+            .rekap-table tr { page-break-inside: avoid; break-inside: avoid; }
+            .rekap-table .r-no { width: 7mm; text-align: center; }
+            .rekap-table .r-nama { width: 44mm; }
+            .rekap-table .r-paket { width: 24mm; font-size: 7pt; }
+            .rekap-table th.r-fas { height: 46mm; vertical-align: bottom; padding: 2px 0; }
+            .rekap-table th.r-fas div { writing-mode: vertical-rl; transform: rotate(180deg); max-height: 44mm; margin: 0 auto; font-size: 6.5pt; font-weight: 600; line-height: 1.15; text-align: left; }
+            .rekap-table td.r-cell { text-align: center; padding: 0; }
+            .rekap-compact td { white-space: nowrap; text-overflow: ellipsis; font-size: 7.5pt; line-height: 1; padding-top: 0; padding-bottom: 0; }
+            .rekap-table td.r-na { background: #d1d5db !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .rekap-box { display: inline-block; border: 1.2px solid #000; vertical-align: middle; }
+            .rekap-foot { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 4mm; font-size: 8.5pt; page-break-inside: avoid; break-inside: avoid; }
+            .rekap-foot .sign { text-align: center; width: 60mm; }
+            .rekap-foot .sign .space { height: 14mm; }
+        }
     </style>
+    <style id="pageStyle"></style>
 </head>
 <body class="antialiased min-h-screen pb-10">
 
@@ -120,7 +140,10 @@
                 <select id="partnerSelect" class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200 font-medium"></select>
                 <p id="syncStatus" class="text-xs text-slate-400 mt-2 cursor-pointer">Menghubungkan...</p>
                 <button id="printAllBtn" class="mt-4 w-full py-3 px-4 bg-white border border-slate-200 text-slate-600 font-semibold rounded-xl text-sm shadow-sm hover:bg-slate-50 transition-colors active:scale-[0.98]">
-                    🖨 Cetak Semua Partner (PDF)
+                    🖨 Cetak Per Partner, Semua (PDF)
+                </button>
+                <button id="printRekapBtn" class="mt-3 w-full py-3 px-4 bg-teal-500 text-white font-semibold rounded-xl text-sm shadow-sm hover:bg-teal-600 transition-colors active:scale-[0.98]">
+                    🖨 Cetak Rekap 1 Lembar, Semua Kampus (PDF)
                 </button>
             </div>
 
@@ -682,6 +705,17 @@
                 const r = await fetch(API_URL + '?action=list');
                 const j = await r.json();
                 if (!j.ok) throw new Error(j.error);
+                // Partner yang baru ada di perangkat ini (belum masuk spreadsheet) dikirim dulu
+                const sheetIds = new Set(j.partners.map(p => p.id));
+                const localOnly = eduPartners.filter(p => !sheetIds.has(p.id));
+                for (const p of localOnly) {
+                    if (!(await push({action:'add', partner:p}))) throw new Error('gagal unggah');
+                    j.partners.push(p);
+                    j.checks[p.id] = [];
+                    for (const index of (savedChecklists[p.id] || [])) {
+                        if (await push({action:'check', id:p.id, index:index, checked:true})) j.checks[p.id].push(index);
+                    }
+                }
                 eduPartners = j.partners; savedChecklists = j.checks;
                 localStorage.setItem('eccopreneur_partners_data', JSON.stringify(eduPartners));
                 saveData();
@@ -773,11 +807,93 @@
             return page;
         }
 
+        const pageStyle = document.getElementById('pageStyle');
+
+        // Rekap 1 lembar: baris = kampus, kolom = fasilitas, kotak kosong untuk diceklis manual
+        function printRekap() {
+            if (!eduPartners.length) {
+                setStatus('Belum ada data Edu Partner untuk dicetak.', true);
+                return;
+            }
+            // Gabungan semua fasilitas (urut sesuai kemunculan pertama)
+            const key = t => t.trim().toLowerCase().replace(/\s+/g, ' ');
+            const cols = [], seen = new Set();
+            eduPartners.forEach(p => p.facilities.forEach(fc => {
+                if (!seen.has(key(fc))) { seen.add(key(fc)); cols.push(fc.trim()); }
+            }));
+
+            // Tinggi baris menyesuaikan jumlah kampus supaya muat 1 lembar A4 mendatar
+            const n = eduPartners.length;
+            const rowH = Math.max(4.2, Math.min(9, 100 / n));
+            const box = Math.min(5, rowH - 1.4);
+
+            const wrap = el('section', 'print-rekap');
+            wrap.appendChild(el('h1', 'rekap-title', 'Eccopreneur Techfest \u2013 Rekap Ceklis Fasilitas Edu Partner'));
+            const sub = el('div', 'rekap-sub');
+            sub.appendChild(el('span', '', 'Tanggal pengecekan: ...................................'));
+            sub.appendChild(el('span', '', 'Jumlah Edu Partner: ' + n + '   |   Kotak abu-abu = tidak termasuk paket'));
+            wrap.appendChild(sub);
+
+            const table = el('table', 'rekap-table' + (n > 14 ? ' rekap-compact' : ''));
+            const thead = el('thead'), hr = el('tr');
+            hr.appendChild(el('th', 'r-no', 'No'));
+            hr.appendChild(el('th', 'r-nama', 'Nama Edu Partner'));
+            hr.appendChild(el('th', 'r-paket', 'Paket'));
+            cols.forEach(c => {
+                const th = el('th', 'r-fas');
+                th.appendChild(el('div', '', c));
+                hr.appendChild(th);
+            });
+            thead.appendChild(hr);
+            table.appendChild(thead);
+
+            const tbody = el('tbody');
+            eduPartners.forEach((p, i) => {
+                const tr = el('tr');
+                tr.style.height = rowH + 'mm';
+                tr.appendChild(el('td', 'r-no', String(i + 1)));
+                tr.appendChild(el('td', 'r-nama', p.name));
+                tr.appendChild(el('td', 'r-paket', p.tier));
+                const own = new Set(p.facilities.map(key));
+                cols.forEach(c => {
+                    if (own.has(key(c))) {
+                        const td = el('td', 'r-cell');
+                        const b = el('span', 'rekap-box');
+                        b.style.width = box + 'mm';
+                        b.style.height = box + 'mm';
+                        td.appendChild(b);
+                        tr.appendChild(td);
+                    } else {
+                        tr.appendChild(el('td', 'r-cell r-na'));
+                    }
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            wrap.appendChild(table);
+
+            const foot = el('div', 'rekap-foot');
+            foot.appendChild(el('div', '', 'Catatan: ..........................................................................................................................................'));
+            const sign = el('div', 'sign');
+            sign.appendChild(el('div', '', 'Petugas Pengecekan,'));
+            sign.appendChild(el('div', 'space'));
+            sign.appendChild(el('div', '', '( ........................................ )'));
+            foot.appendChild(sign);
+            wrap.appendChild(foot);
+
+            pageStyle.textContent = '@page { size: A4 landscape; margin: 10mm; }';
+            printArea.innerHTML = '';
+            printArea.appendChild(wrap);
+            document.title = 'Rekap Ceklis Fasilitas - Semua Edu Partner';
+            window.print();
+        }
+
         function printPartners(list, title) {
             if (!list.length) {
                 setStatus('Belum ada data Edu Partner untuk dicetak.', true);
                 return;
             }
+            pageStyle.textContent = '@page { size: A4 portrait; margin: 15mm; }';
             printArea.innerHTML = '';
             list.forEach(p => printArea.appendChild(buildPrintPage(p)));
             document.title = title; // menjadi nama file PDF
@@ -789,6 +905,7 @@
             const partner = eduPartners.find(p => p.id === currentPartnerId);
             if (partner) printPartners([partner], 'Ceklis Fasilitas - ' + partner.name);
         });
+        document.getElementById('printRekapBtn').addEventListener('click', printRekap);
         document.getElementById('printAllBtn').addEventListener('click', () => {
             printPartners(eduPartners, 'Ceklis Fasilitas - Semua Edu Partner');
         });
