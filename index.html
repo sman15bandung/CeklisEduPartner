@@ -63,6 +63,35 @@
             text-decoration: line-through;
             color: #94A3B8;
         }
+        /* === CETAK / PDF === */
+        #printArea { display: none; }
+        @media print {
+            @page { size: A4 portrait; margin: 15mm; }
+            body { background: #fff !important; color: #000; padding: 0 !important; min-height: 0 !important; }
+            header, main { display: none !important; }
+            #printArea { display: block; font-size: 11pt; }
+            .print-page { page-break-after: always; break-after: page; }
+            .print-page:last-child { page-break-after: auto; break-after: auto; }
+            .print-head { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
+            .print-head h1 { font-size: 16pt; font-weight: 700; margin: 0; }
+            .print-head p { font-size: 11pt; margin: 2px 0 0; }
+            .print-info { width: 100%; margin-bottom: 10px; border-collapse: collapse; }
+            .print-info td { padding: 2px 0; vertical-align: top; }
+            .print-info td:first-child { width: 45mm; white-space: nowrap; }
+            .print-table { width: 100%; border-collapse: collapse; }
+            .print-table th, .print-table td { border: 1px solid #000; padding: 7px 8px; vertical-align: middle; }
+            .print-table th { background: #e5e7eb !important; font-weight: 700; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .print-table tr { page-break-inside: avoid; break-inside: avoid; }
+            .print-table .c-no { width: 10mm; text-align: center; }
+            .print-table .c-cek { width: 20mm; text-align: center; }
+            .print-table .c-ket { width: 50mm; }
+            .print-box { display: inline-block; width: 6mm; height: 6mm; border: 1.5px solid #000; }
+            .print-note { margin-top: 10px; }
+            .print-note .line { border-bottom: 1px dotted #000; height: 8mm; }
+            .print-sign { width: 100%; margin-top: 14mm; border-collapse: collapse; page-break-inside: avoid; break-inside: avoid; }
+            .print-sign td { width: 50%; text-align: center; vertical-align: top; }
+            .print-sign .space { height: 22mm; }
+        }
     </style>
 </head>
 <body class="antialiased min-h-screen pb-10">
@@ -90,6 +119,9 @@
                 <label class="block text-sm font-semibold text-slate-600 mb-2">Pilih Edu Partner</label>
                 <select id="partnerSelect" class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-200 font-medium"></select>
                 <p id="syncStatus" class="text-xs text-slate-400 mt-2 cursor-pointer">Menghubungkan...</p>
+                <button id="printAllBtn" class="mt-4 w-full py-3 px-4 bg-white border border-slate-200 text-slate-600 font-semibold rounded-xl text-sm shadow-sm hover:bg-slate-50 transition-colors active:scale-[0.98]">
+                    🖨 Cetak Semua Partner (PDF)
+                </button>
             </div>
 
 
@@ -119,7 +151,11 @@
                 </ul>
             </div>
             
-            <button id="resetBtn" class="mt-6 w-full py-3 px-4 bg-white border border-rose-200 text-rose-500 font-semibold rounded-xl text-sm shadow-sm hover:bg-rose-50 transition-colors active:scale-[0.98]">
+            <button id="printOneBtn" class="mt-6 w-full py-3 px-4 bg-teal-500 text-white font-semibold rounded-xl text-sm shadow-sm hover:bg-teal-600 transition-colors active:scale-[0.98]">
+                🖨 Cetak Ceklis Partner Ini (PDF)
+            </button>
+
+            <button id="resetBtn" class="mt-3 w-full py-3 px-4 bg-white border border-rose-200 text-rose-500 font-semibold rounded-xl text-sm shadow-sm hover:bg-rose-50 transition-colors active:scale-[0.98]">
                 Reset Ceklis Partner Ini
             </button>
         </div>
@@ -179,6 +215,9 @@
         </div>
 
     </main>
+
+    <!-- Area khusus cetak (hanya tampil saat print) -->
+    <div id="printArea"></div>
 
     <script>
         // Data default untuk percobaan pertama
@@ -627,6 +666,103 @@
         }
         statusEl.addEventListener('click', loadFromSheet);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) loadFromSheet(); });
+
+        // --- CETAK / SIMPAN PDF (LEMBAR CEKLIS MANUAL) ---
+        const printArea = document.getElementById('printArea');
+        const originalTitle = document.title;
+
+        function el(tag, className, text) {
+            const e = document.createElement(tag);
+            if (className) e.className = className;
+            if (text !== undefined) e.textContent = text;
+            return e;
+        }
+
+        function buildPrintPage(partner) {
+            const page = el('section', 'print-page');
+
+            const head = el('div', 'print-head');
+            head.appendChild(el('h1', '', 'Eccopreneur Techfest'));
+            head.appendChild(el('p', '', 'Lembar Ceklis Fasilitas Edu Partner'));
+            page.appendChild(head);
+
+            const info = el('table', 'print-info');
+            [['Nama Edu Partner', partner.name],
+             ['Paket', partner.tier],
+             ['Tanggal Pengecekan', '..............................................']
+            ].forEach(([label, value]) => {
+                const tr = el('tr');
+                tr.appendChild(el('td', '', label));
+                tr.appendChild(el('td', '', ': ' + value));
+                info.appendChild(tr);
+            });
+            page.appendChild(info);
+
+            const table = el('table', 'print-table');
+            const thead = el('thead');
+            const hr = el('tr');
+            hr.appendChild(el('th', 'c-no', 'No'));
+            hr.appendChild(el('th', '', 'Fasilitas'));
+            hr.appendChild(el('th', 'c-cek', 'Ceklis'));
+            hr.appendChild(el('th', 'c-ket', 'Keterangan'));
+            thead.appendChild(hr);
+            table.appendChild(thead);
+
+            const tbody = el('tbody');
+            partner.facilities.forEach((facility, i) => {
+                const tr = el('tr');
+                tr.appendChild(el('td', 'c-no', String(i + 1)));
+                tr.appendChild(el('td', '', facility));
+                const cek = el('td', 'c-cek');
+                cek.appendChild(el('span', 'print-box'));
+                tr.appendChild(cek);
+                tr.appendChild(el('td', 'c-ket', ''));
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            page.appendChild(table);
+
+            const note = el('div', 'print-note');
+            note.appendChild(el('div', '', 'Catatan:'));
+            note.appendChild(el('div', 'line'));
+            note.appendChild(el('div', 'line'));
+            page.appendChild(note);
+
+            const sign = el('table', 'print-sign');
+            const r1 = el('tr');
+            r1.appendChild(el('td', '', 'Petugas Pengecekan,'));
+            r1.appendChild(el('td', '', 'Perwakilan Edu Partner,'));
+            const r2 = el('tr');
+            r2.appendChild(el('td', 'space'));
+            r2.appendChild(el('td', 'space'));
+            const r3 = el('tr');
+            r3.appendChild(el('td', '', '( ........................................ )'));
+            r3.appendChild(el('td', '', '( ........................................ )'));
+            sign.appendChild(r1); sign.appendChild(r2); sign.appendChild(r3);
+            page.appendChild(sign);
+
+            return page;
+        }
+
+        function printPartners(list, title) {
+            if (!list.length) {
+                setStatus('Belum ada data Edu Partner untuk dicetak.', true);
+                return;
+            }
+            printArea.innerHTML = '';
+            list.forEach(p => printArea.appendChild(buildPrintPage(p)));
+            document.title = title; // menjadi nama file PDF
+            window.print();
+        }
+        window.addEventListener('afterprint', () => { document.title = originalTitle; });
+
+        document.getElementById('printOneBtn').addEventListener('click', () => {
+            const partner = eduPartners.find(p => p.id === currentPartnerId);
+            if (partner) printPartners([partner], 'Ceklis Fasilitas - ' + partner.name);
+        });
+        document.getElementById('printAllBtn').addEventListener('click', () => {
+            printPartners(eduPartners, 'Ceklis Fasilitas - Semua Edu Partner');
+        });
 
         // Initialize Application
         initPackageDropdown();
