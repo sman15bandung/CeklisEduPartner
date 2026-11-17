@@ -242,6 +242,7 @@
 
         // State Management
         let currentPartnerId = null;
+        let resetting = false; // true selama proses reset, supaya data lama tidak dimuat ulang
         // Load saved data from localStorage, or initialize empty object
         let savedChecklists = JSON.parse(localStorage.getItem('eccopreneur_checklists')) || {};
 
@@ -388,14 +389,39 @@
         }
 
         // 7. Reset Button Logic
-        resetBtn.addEventListener('click', () => {
-            if(currentPartnerId) {
-                // Reset semua ceklis untuk partner terpilih
-                savedChecklists[currentPartnerId] = [];
-                saveData();
-                renderChecklist();
-                push({action:'reset', id:currentPartnerId});
+        const resetBtnLabel = resetBtn.textContent.trim();
+        function flashResetBtn(text) {
+            resetBtn.textContent = text;
+            setTimeout(() => { resetBtn.textContent = resetBtnLabel; }, 2000);
+        }
+        resetBtn.addEventListener('click', async () => {
+            const id = currentPartnerId;
+            if (!id) return;
+            const before = (savedChecklists[id] || []).slice();
+            if (before.length === 0) {
+                flashResetBtn('Belum ada yang dicentang');
+                return;
             }
+            // Reset semua ceklis untuk partner terpilih (langsung di layar)
+            resetting = true;
+            savedChecklists[id] = [];
+            saveData();
+            renderChecklist();
+            flashResetBtn('Ceklis direset \u2713');
+
+            // Kirim ke spreadsheet, lalu pastikan benar-benar terhapus di sana
+            let ok = await push({action:'reset', id:id});
+            try {
+                const r = await fetch(API_URL + '?action=list');
+                const j = await r.json();
+                const left = (j.ok && j.checks && j.checks[id]) || [];
+                // Jika spreadsheet masih menyimpan centang, hapus satu per satu
+                for (const index of left) {
+                    ok = await push({action:'check', id:id, index:Number(index), checked:false}) && ok;
+                }
+            } catch (e) { ok = false; }
+            resetting = false;
+            if (!ok) setStatus('Reset tersimpan di perangkat ini, tetapi gagal ke spreadsheet. Ketuk untuk muat ulang.', true);
         });
 
         // --- FITUR TAMBAH PARTNER BARU ---
@@ -643,11 +669,14 @@
                 const j = await r.json();
                 if (!j.ok) throw new Error(j.error);
                 setStatus('Tersimpan di spreadsheet \u2713');
+                return true;
             } catch (e) {
                 setStatus('Gagal menyimpan ke spreadsheet. Ketuk untuk muat ulang.', true);
+                return false;
             }
         }
         async function loadFromSheet() {
+            if (resetting) return;
             setStatus('Memuat dari spreadsheet...');
             try {
                 const r = await fetch(API_URL + '?action=list');
